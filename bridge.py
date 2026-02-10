@@ -1,60 +1,67 @@
-from socket import socket, AF_INET, SOCK_STREAM,SOL_SOCKET, SO_REUSEADDR
+import socketserver
+import requests
 from urllib.parse import urlparse
-from urllib.request import urlopen, Request
-import threading
-
-server_socket = socket(AF_INET, SOCK_STREAM)
+from requests.adapters import HTTPAdapter
 
 
-server_socket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-server_socket.bind(('0.0.0.0', 8080))
-server_socket.listen(10)
+session = requests.Session()
+session.headers.update({
+    'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:40.0) Gecko/20100101 Firefox/40.0'
+})
 
-def handleClient(client_socket, client_address):
-    try:
-        print(f"Connected by {client_address}")
-        request_data = client_socket.recv(1024)
-        if not request_data:
-            client_socket.close()
-            return
+adapter = HTTPAdapter(pool_connections=20, pool_maxsize=20)
+session.mount('https://', adapter)
+session.mount('http://', adapter)
 
+class ProxyHandler(socketserver.BaseRequestHandler):
+    def handle(self):
         try:
-            bUrl = request_data.split(b" ")[1]
-        except IndexError:
-            client_socket.sendall(b"HTTP/1.1 400 Bad Request\r\nContent-Type: text/plain\r\n\r\nBad Request")
-            client_socket.close()
-            return
+            request_data = self.request.recv(4096)
+            if not request_data:
+                return
+
+            try:
+                first_line = request_data.split(b'\n')[0]
+                method, bUrl, _ = first_line.split(b' ')
+            except ValueError:
+                return
+
+            if method == b'CONNECT':
+                return
+
+            parsedUrl = urlparse(bUrl.decode("utf-8"))
+
+            if "web.archive.org" in parsedUrl.netloc:
+                archiveUrl = bUrl.decode("utf-8")
+            else:
+                archiveUrl = "https://web.archive.org/web/2002if_/" + parsedUrl.netloc + parsedUrl.path
+                if parsedUrl.query:
+                    archiveUrl += "?" + parsedUrl.query
+
+            print(f"Downloading: {parsedUrl.netloc}{parsedUrl.path}")
+
+            response = session.get(archiveUrl, stream=True, timeout=10)
 
 
+            headers = f"HTTP/1.1 200 OK\r\nContent-Type: {response.headers.get('Content-Type')}\r\nConnection: close\r\n\r\n"
+            self.request.sendall(headers.encode('utf-8'))
 
-        parsedUrl = urlparse(bUrl.decode("utf-8"))
-        archiveUrl = "https://web.archive.org/web/2002if_/" + parsedUrl.netloc + parsedUrl.path
-        if parsedUrl.query:
-            archiveUrl += "?" + parsedUrl.query
+            for chunk in response.iter_content(chunk_size=4096):
+                if chunk:
+                    self.request.sendall(chunk)
 
-        req = Request(archiveUrl, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:40.0) Gecko/20100101 Firefox/40.0'})
-        response = urlopen(req)
-        content_type = response.info().get('Content-Type')
-
-        headers = f"HTTP/1.1 200 OK\r\nContent-Type: {content_type}\r\nConnection: close\r\n\r\n"
-        client_socket.sendall(headers.encode('utf-8'))
-
-        while True:
-            chunk = response.read(4096)
-            if not chunk:
-                break
-            client_socket.sendall(chunk)
-
-    except Exception as e:
-        print(f"Error handling request from {client_address}: {e}")
-        try:
-            client_socket.sendall(b"HTTP/1.1 500 Internal Server Error\r\nContent-Type: text/plain\r\n\r\nInternal Server Error")
-        except Exception:
+        except Exception as e:
             pass
-    finally:
-        client_socket.close()
+        finally:
+            self.request.close()
 
+class ThreadingTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+    allow_reuse_address = True
+    daemon_threads = True
 
-while True:
-    client_socket, client_address = server_socket.accept()
-    threading.Thread(target=handleClient, args=(client_socket, client_address)).start()
+if __name__ == "__main__":
+    HOST, PORT = "0.0.0.0", 8080
+    print(f"poeltijd bridge starts on port {PORT}...")
+    
+    with ThreadingTCPServer((HOST, PORT), ProxyHandler) as server:
+        server.serve_forever()
