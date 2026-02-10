@@ -28,7 +28,7 @@ def handleClient(client_socket, client_address):
 
 
         parsedUrl = urlparse(bUrl.decode("utf-8"))
-        archiveUrl = "http://web.archive.org/web/2002id_/" + parsedUrl.netloc + parsedUrl.path
+        archiveUrl = "https://web.archive.org/web/2002if_/" + parsedUrl.netloc + parsedUrl.path
         if parsedUrl.query:
             archiveUrl += "?" + parsedUrl.query
 
