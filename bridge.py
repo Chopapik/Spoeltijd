@@ -31,21 +31,38 @@ class ProxyHandler(socketserver.BaseRequestHandler):
 
             parsedUrl = urlparse(bUrl.decode("utf-8"))
 
-            if "web.archive.org" in parsedUrl.netloc:
-                archiveUrl = bUrl.decode("utf-8")
+            print("client asked for", parsedUrl)
+
+        
+            archiveUrl = "https://web.archive.org/web/2002if_/" + parsedUrl.netloc + parsedUrl.path
+            if parsedUrl.query:
+                archiveUrl += "?" + parsedUrl.query
+
+
+            if "im_/" in archiveUrl:
+                print("--------------------------------")
+                print(f"Fetching image: {parsedUrl.path}")
+                print(f"Downloading from: https://web.archive.org{parsedUrl.path}")
+                response = session.get("https://web.archive.org"+parsedUrl.path, stream=True, timeout=10)
+                print("--------------------------------")
+
             else:
-                archiveUrl = "https://web.archive.org/web/2002if_/" + parsedUrl.netloc + parsedUrl.path
-                if parsedUrl.query:
-                    archiveUrl += "?" + parsedUrl.query
+                print("--------------------------------")
+                print(f"Downloading: {archiveUrl}")
+                print("Requesting HTML content...")
+                response = session.get(archiveUrl, stream=True, timeout=10)
+                print("--------------------------------")
 
-            print(f"Downloading: {parsedUrl.netloc}{parsedUrl.path}")
+            content = response.content
+            content_type = response.headers.get('Content-Type', 'application/octet-stream')
+            headers = (
+                f"HTTP/1.0 {response.status_code} {response.reason}\r\n"
+                f"Content-Type: {content_type}\r\n"
+                f"Content-Length: {len(content)}\r\n"
+                f"Connection: close\r\n\r\n"
+            )
 
-            response = session.get(archiveUrl, stream=True, timeout=10)
-
-
-            headers = f"HTTP/1.1 200 OK\r\nContent-Type: {response.headers.get('Content-Type')}\r\nConnection: close\r\n\r\n"
             self.request.sendall(headers.encode('utf-8'))
-
             for chunk in response.iter_content(chunk_size=4096):
                 if chunk:
                     self.request.sendall(chunk)
