@@ -1,12 +1,19 @@
 import os
 from urllib.parse import urlparse
 
-def get_archive_url(raw_url_bytes, target_year="2002"):
+
+
+def get_archive_url(raw_url_bytes, target_year):
     """
     Spoeltijd Proxy decision engine.
     Splits the URL, analyzes file type and selects the ideal Wayback Machine modifier.
     Returns: (ready_url_to_download, parsedUrl_object)
     """
+    if target_year is None:
+        target_year_local = current_year
+    else:
+        target_year_local = target_year
+
     # 1. Decoding raw bytes from the socket
     if isinstance(raw_url_bytes, bytes):
         url_str = raw_url_bytes.decode("utf-8", errors="ignore")
@@ -56,7 +63,7 @@ def get_archive_url(raw_url_bytes, target_year="2002"):
         file_type = "HTML/Raw Data (id_)"
 
     # 4. Composing the final request
-    fetch_url = f"https://web.archive.org/web/{target_year}{modifier}/{netloc}{parsedUrl.path}"
+    fetch_url = f"https://web.archive.org/web/{target_year_local}{modifier}/{netloc}{parsedUrl.path}"
     if query: 
         fetch_url += "?" + query
 

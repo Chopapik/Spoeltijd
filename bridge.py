@@ -1,11 +1,15 @@
 import socketserver
 import requests
 import re
+import datetime
 from urllib.parse import urljoin
 from requests.adapters import HTTPAdapter
 from wayback_parser import get_archive_url
 
 PORT = 8080
+
+# Globalna zmienna rocznika
+current_year = 2000
 
 # One shared session with a large connection pool for faster repeated requests.
 session = requests.Session()
@@ -14,7 +18,9 @@ session.mount('https://', adapter)
 session.mount('http://', adapter)
 
 # Rewrite src/href in HTML so assets load via Wayback (im_/js_/cs_ prefixes)
-def inject_wayback_tags(html_bytes, base_url, year="2002"):
+def inject_wayback_tags(html_bytes, base_url, year=None):
+    if year is None:
+        year = str(current_year)
     try:
         html_str = html_bytes.decode('utf-8', errors='ignore')
         pattern = r'(src|href)=([\"\'])(.*?)([\"\'])'
@@ -68,7 +74,7 @@ class ProxyHandler(socketserver.BaseRequestHandler):
             if method == 'CONNECT':
                 return
 
-            fetch_url, parsed_url_obj = get_archive_url(full_url, target_year="2002")
+            fetch_url, parsed_url_obj = get_archive_url(full_url, target_year=str(current_year))
             r = session.get(fetch_url, stream=True, timeout=15, allow_redirects=True)
 
             content_type = r.headers.get('Content-Type', '').lower()
@@ -77,7 +83,7 @@ class ProxyHandler(socketserver.BaseRequestHandler):
             # HTML: rewrite asset URLs and send; other types: stream as-is
             if is_html:
                 body_content = r.content
-                modified_body = inject_wayback_tags(body_content, base_url=full_url, year="2002")
+                modified_body = inject_wayback_tags(body_content, base_url=full_url, year=str(current_year))
                 headers_list = [
                     f"HTTP/1.0 {r.status_code} OK",
                     f"Content-Type: {r.headers.get('Content-Type', 'text/html')}",
