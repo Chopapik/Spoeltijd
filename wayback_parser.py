@@ -1,6 +1,6 @@
 import os
+import datetime
 from urllib.parse import urlparse
-
 
 
 def get_archive_url(raw_url_bytes, target_year):
@@ -10,9 +10,9 @@ def get_archive_url(raw_url_bytes, target_year):
     Returns: (ready_url_to_download, parsedUrl_object)
     """
     if target_year is None:
-        target_year_local = current_year
+        target_year_local = str(datetime.datetime.now().year)
     else:
-        target_year_local = target_year
+        target_year_local = str(target_year)
 
     # 1. Decoding raw bytes from the socket
     if isinstance(raw_url_bytes, bytes):
