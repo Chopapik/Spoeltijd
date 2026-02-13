@@ -4,7 +4,7 @@ import re
 from urllib.parse import urljoin
 from requests.adapters import HTTPAdapter
 from wayback_parser import get_archive_url
-
+import threading
 PORT = 8080
 
 class Bridge:
@@ -15,16 +15,22 @@ class Bridge:
         self.session.mount("https://", self.adapter)
         self.session.mount("http://", self.adapter)
 
+    import threading
+
     def start_server(self, port: int = 8080):
         print(f"--- Spoeltijd Bridge running on port {port} ---")
         print(f"--- Waiting for connections... ---")
 
-        with self.ThreadingTCPServer(("0.0.0.0", port), self.ProxyHandler) as server:
-            server.bridge = self
-            try:
-                server.serve_forever()
-            except KeyboardInterrupt:
-                print("\nShutting down Spoeltijd Bridge...")
+        def run_server():
+            with self.ThreadingTCPServer(("0.0.0.0", port), self.ProxyHandler) as server:
+                server.bridge = self
+                try:
+                    server.serve_forever()
+                except KeyboardInterrupt:
+                    print("\nShutting down Spoeltijd Bridge...")
+
+        server_thread = threading.Thread(target=run_server, daemon=True)
+        server_thread.start()
 
     # Rewrite src/href in HTML so assets load via Wayback (im_/js_/cs_ prefixes)
     def inject_wayback_tags(self, html_bytes, base_url, year: str | None = None):
