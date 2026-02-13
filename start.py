@@ -7,7 +7,7 @@ def main():
 
     year_min = 1995
     year_max = datetime.datetime.now().year
-    current_year = year_min
+    current_year = 2002
 
     hardware = Hardware(1995, year_max, current_year)
     bridge = Bridge(current_year)

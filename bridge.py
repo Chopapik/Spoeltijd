@@ -5,6 +5,7 @@ from urllib.parse import urljoin
 from requests.adapters import HTTPAdapter
 from wayback_parser import get_archive_url
 import threading
+import datetime
 PORT = 8080
 
 class Bridge:
@@ -72,6 +73,18 @@ class Bridge:
                 return f"{attr_name}={quote}{new_url}{quote}"
 
             patched_html = re.sub(pattern, replacer, html_str, flags=re.IGNORECASE)
+            footer = (
+                f'<div style="position:fixed;bottom:0;left:0;right:0;background:#000;color:#fff;'
+                f'font-family:Times New Roman,Times,serif;font-size:10px;padding:2px;text-align:center;">'
+                f'* SPOELTIJD * | {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}'
+                f'</div>'
+            )
+            if re.search(r"</body>", patched_html, re.IGNORECASE):
+                patched_html = re.sub(
+                    r"(</body>)", footer + r"\1", patched_html, count=1, flags=re.IGNORECASE
+                )
+            else:
+                patched_html = patched_html + footer
             return patched_html.encode("utf-8")
 
         except Exception as e:
