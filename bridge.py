@@ -1,7 +1,8 @@
 import socketserver
 import requests
 import re
-from urllib.parse import urljoin
+import json
+from urllib.parse import urljoin, urlparse
 from requests.adapters import HTTPAdapter
 from wayback_parser import get_archive_url
 import threading
@@ -73,6 +74,20 @@ class Bridge:
                 return f"{attr_name}={quote}{new_url}{quote}"
 
             patched_html = re.sub(pattern, replacer, html_str, flags=re.IGNORECASE)
+            year_script = (
+                f'<div id="spoeltijd-meta" data-year="{self.current_year}" style="display:none"></div>'
+                '<script>(function(){'
+                'var m=document.getElementById("spoeltijd-meta");'
+                'if(!m)return;'
+                'var initialYear=parseInt(m.getAttribute("data-year"),10);'
+                'function check(){'
+                'fetch("/spoeltijd/year").then(function(r){return r.json();}).then(function(d){'
+                'if(d.year!==initialYear)location.reload();'
+                '}).catch(function(){});'
+                '}'
+                'setInterval(check,1500);'
+                '})();</script>'
+            )
             footer = (
                 f'<div style="position:fixed;bottom:0;left:0;right:0;background:#000;color:#fff;'
                 f'font-family:Times New Roman,Times,serif;font-size:10px;padding:2px;text-align:center;">'
@@ -81,10 +96,10 @@ class Bridge:
             )
             if re.search(r"</body>", patched_html, re.IGNORECASE):
                 patched_html = re.sub(
-                    r"(</body>)", footer + r"\1", patched_html, count=1, flags=re.IGNORECASE
+                    r"(</body>)", year_script + footer + r"\1", patched_html, count=1, flags=re.IGNORECASE
                 )
             else:
-                patched_html = patched_html + footer
+                patched_html = patched_html + year_script + footer
             return patched_html.encode("utf-8")
 
         except Exception as e:
@@ -113,6 +128,19 @@ class Bridge:
 
                 # Access the owning Bridge instance via the server
                 bridge = self.server.bridge
+
+                # Endpoint: aktualny rok z bridge (encoder) – przeglądarka odświeża stronę przy zmianie
+                path = urlparse(full_url).path if full_url.startswith("http") else full_url.split("?")[0]
+                if path.rstrip("/") == "/spoeltijd/year":
+                    body = json.dumps({"year": bridge.current_year}).encode("utf-8")
+                    response = (
+                        b"HTTP/1.0 200 OK\r\n"
+                        b"Content-Type: application/json; charset=utf-8\r\n"
+                        b"Content-Length: " + str(len(body)).encode() + b"\r\n"
+                        b"Connection: close\r\n\r\n" + body
+                    )
+                    self.request.sendall(response)
+                    return
 
                 fetch_url, parsed_url_obj = get_archive_url(
                     full_url, target_year=str(bridge.current_year)
