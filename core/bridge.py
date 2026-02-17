@@ -4,8 +4,8 @@ import threading
 import requests
 from requests.adapters import HTTPAdapter
 
-from constants import PORT
-from proxy_handler import ProxyHandler, ThreadingTCPServer
+from .constants import PORT
+from .proxy_handler import ProxyHandler, ThreadingTCPServer
 
 
 class Bridge:

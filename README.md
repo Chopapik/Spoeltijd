@@ -37,7 +37,7 @@ pip install -r requirements.txt
 python start.py
 ```
 
-The proxy listens on **port 8080** (configurable in `constants.py`).
+The proxy listens on **port 8080** (configurable in `core/constants.py`).
 
 ---
 

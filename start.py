@@ -1,4 +1,4 @@
-from bridge import Bridge
+from core import Bridge
 from panel import Panel
 import datetime
 import time
