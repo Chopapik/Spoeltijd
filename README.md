@@ -53,8 +53,6 @@ Then open any URL, e.g. `http://google.com/` — you will get the archived snaps
 
 ---
 
-### Hardware UI
-
 <p align="center">
   <img src="https://github.com/user-attachments/assets/028e8c24-0df7-4424-b38b-1f6823855f3c" alt="hardware" width="600" />
 </p>
