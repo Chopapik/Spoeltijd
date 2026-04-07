@@ -106,12 +106,12 @@ class ProxyHandler(socketserver.BaseRequestHandler):
             full_url, target_year=str(bridge.current_year)
         )
 
-        # Odtworzenie oryginalnego modyfikatora z URL (np. id_, im_)
+        # Restore original URL modifier (for example: id_, im_)
         mod_match = re.search(r'/web/\d{4,14}([a-z]{2}_)/', fetch_url)
         modifier = mod_match.group(1) if mod_match else "id_"
 
         try:
-            # Ręczna pętla przekierowań: zmuszamy Wayback do trzymania surowego kodu (id_)
+            # Manual redirect loop: force Wayback to keep raw source mode (id_)
             for _ in range(5):
                 r = bridge.session.get(
                     fetch_url, stream=True, timeout=15, allow_redirects=False
@@ -121,7 +121,7 @@ class ProxyHandler(socketserver.BaseRequestHandler):
                     if next_url.startswith('/'):
                         next_url = "https://web.archive.org" + next_url
                     
-                    # Regex szuka 14 cyfr i jeśli nie ma za nimi modyfikatora, dokleja go na siłę
+                    # Regex finds 14 digits and appends the modifier if it is missing
                     next_url = re.sub(r'(/web/\d{14})/', r'\g<1>' + modifier + '/', next_url)
                     fetch_url = next_url
                 else:

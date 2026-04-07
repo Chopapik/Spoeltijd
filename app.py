@@ -33,7 +33,7 @@ class App:
         print(f"Time Warp: {new_year}")
 
         self.panel.update_lcd(f"{new_year}")
-        self.panel.update_oled(f"Rok docelowy:\n{new_year}")
+        self.panel.update_oled(f"Target year:\n{new_year}")
 
         self.bridge.current_year = new_year
         self.last_year_state = new_year
@@ -46,5 +46,5 @@ class App:
                 self._process_tick()
                 time.sleep(0.1)
         except KeyboardInterrupt:
-            print("\nZamykanie systemu...")
+            print("\nShutting down...")
             self.panel.update_lcd("SYSTEM HALTED")
