@@ -3,6 +3,7 @@
 import socketserver
 import datetime
 import json
+import re
 from urllib.parse import urlparse, parse_qs
 
 from .wayback_parser import get_archive_url
@@ -20,12 +21,22 @@ class ProxyHandler(socketserver.BaseRequestHandler):
                 return
 
             try:
-                line = (
-                    request_data.split(b"\n")[0]
-                    .decode("utf-8", errors="ignore")
-                    .strip()
-                )
+                # Separate headers from the request body
+                header_block = request_data.split(b"\r\n\r\n")[0].decode("utf-8", errors="ignore")
+                lines = header_block.split("\r\n")
+                line = lines[0]
                 method, full_url, _ = line.split(" ")
+
+                # >>>Handle Transparent Proxy <<<
+                if not full_url.startswith("http"):
+                    host = ""
+                    for h in lines[1:]:
+                        if h.lower().startswith("host:"):
+                            host = h.split(":", 1)[1].strip()
+                            break
+                    full_url = f"http://{host}{full_url}"
+                # >>> END Handle Transparent Proxy <<<
+
             except Exception:
                 return
 
@@ -95,10 +106,27 @@ class ProxyHandler(socketserver.BaseRequestHandler):
             full_url, target_year=str(bridge.current_year)
         )
 
+        # Odtworzenie oryginalnego modyfikatora z URL (np. id_, im_)
+        mod_match = re.search(r'/web/\d{4,14}([a-z]{2}_)/', fetch_url)
+        modifier = mod_match.group(1) if mod_match else "id_"
+
         try:
-            r = bridge.session.get(
-                fetch_url, stream=True, timeout=15, allow_redirects=True
-            )
+            # Ręczna pętla przekierowań: zmuszamy Wayback do trzymania surowego kodu (id_)
+            for _ in range(5):
+                r = bridge.session.get(
+                    fetch_url, stream=True, timeout=15, allow_redirects=False
+                )
+                if r.status_code in [301, 302, 303, 307, 308] and 'Location' in r.headers:
+                    next_url = r.headers['Location']
+                    if next_url.startswith('/'):
+                        next_url = "https://web.archive.org" + next_url
+                    
+                    # Regex szuka 14 cyfr i jeśli nie ma za nimi modyfikatora, dokleja go na siłę
+                    next_url = re.sub(r'(/web/\d{14})/', r'\g<1>' + modifier + '/', next_url)
+                    fetch_url = next_url
+                else:
+                    break
+
         except Exception as e:
             print(f"Wayback error: {e}")
             return
