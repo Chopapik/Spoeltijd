@@ -1,4 +1,4 @@
-"""Core: bridge, proxy, constants, wayback parser, HTML injector."""
+"""Core orchestration and shared constants."""
 
 from .bridge import Bridge
 from .constants import PORT

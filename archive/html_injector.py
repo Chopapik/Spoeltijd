@@ -63,18 +63,18 @@ def inject_wayback_tags(html_bytes: bytes, base_url: str, year: str) -> bytes:
         stealth_script = f"""
             <script language="JavaScript">
             <!--
-            var spoeltijdYear = {year};
-            function spoeltijdPoll() {{
+            var currentYear = {year};
+            function Poll() {{
               var img = new Image();
               img.onload = function() {{
                 var w = (typeof img.width !== "undefined") ? img.width : 0;
                 var h = (typeof img.height !== "undefined") ? img.height : 0;
                 if (w > 1 || h > 1) {{ location.reload(); }}
               }};
-              img.src = "/spoeltijd/pixel?y=" + spoeltijdYear + "&t=" + (new Date().getTime());
+              img.src = "/spoeltijd/pixel?y=" + currentYear + "&t=" + (new Date().getTime());
             }}
-            setInterval(spoeltijdPoll, 1500);
-            spoeltijdPoll();
+            setInterval(Poll, 1500);
+            Poll();
             // -->
             </script>
             """

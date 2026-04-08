@@ -6,9 +6,9 @@ import json
 import re
 from urllib.parse import urlparse, parse_qs
 
-from .wayback_parser import get_archive_url
-from .html_injector import inject_wayback_tags
-from .constants import GIF_1X1, GIF_2X2
+from archive.wayback_parser import get_archive_url
+from archive.html_injector import inject_wayback_tags
+from core.constants import GIF_1X1, GIF_2X2
 
 
 class ProxyHandler(socketserver.BaseRequestHandler):
