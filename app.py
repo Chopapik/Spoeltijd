@@ -21,6 +21,11 @@ class App:
         steps = int(self.panel.encoder.steps)
         new_year = self.year_min + steps
 
+        # Sync encoder with external year changes (for example: config page save).
+        if self.bridge.current_year != new_year:
+            new_year = self.bridge.current_year
+            self.panel.encoder.steps = new_year - self.year_min
+
         new_year = max(self.year_min, min(self.year_max, new_year))
 
         if new_year != self.panel.encoder.steps + self.year_min:

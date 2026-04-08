@@ -10,9 +10,9 @@ def get_archive_url(raw_url_bytes, target_year):
     Returns: (ready_url_to_download, parsedUrl_object)
     """
     if target_year is None:
-        target_year_local = str(datetime.datetime.now().year)
+        target_timestamp = str(datetime.datetime.now().year)
     else:
-        target_year_local = str(target_year)
+        target_timestamp = str(target_year)
 
     # 1. Decoding raw bytes from the socket
     if isinstance(raw_url_bytes, bytes):
@@ -63,7 +63,7 @@ def get_archive_url(raw_url_bytes, target_year):
         file_type = "HTML/Raw Data (id_)"
 
     # 4. Composing the final request
-    fetch_url = f"https://web.archive.org/web/{target_year_local}{modifier}/{netloc}{parsedUrl.path}"
+    fetch_url = f"https://web.archive.org/web/{target_timestamp}{modifier}/{netloc}{parsedUrl.path}"
     if query:
         fetch_url += "?" + query
 

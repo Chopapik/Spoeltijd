@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Spoeltijd Config</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 24px;
+      color: #111;
+      background: #fff;
+    }
+    .wrap {
+      max-width: 460px;
+    }
+    h1 {
+      margin-bottom: 16px;
+      font-size: 22px;
+    }
+    label {
+      display: block;
+      margin-top: 12px;
+      margin-bottom: 4px;
+      font-weight: bold;
+    }
+    input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 8px;
+      font-size: 14px;
+    }
+    button {
+      margin-top: 16px;
+      padding: 8px 14px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .hint {
+      margin-top: 12px;
+      font-size: 12px;
+      color: #444;
+    }
+    .state {
+      margin-top: 8px;
+      font-size: 13px;
+      color: #222;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Spoeltijd Config</h1>
+
+    <form id="configForm" method="get">
+      <label for="year">year</label>
+      <input id="year" name="year" type="number" required />
+
+      <label for="month">month (optional)</label>
+      <input id="month" name="month" type="number" min="1" max="12" />
+
+      <label for="day">day (optional)</label>
+      <input id="day" name="day" type="number" min="1" max="31" />
+
+      <button type="submit">Save</button>
+    </form>
+
+    <div class="state" id="stateLine"></div>
+    <div class="hint">Leave month/day empty to keep year-only mode.</div>
+  </div>
+
+  <script>
+    (function () {
+      var isConfigHost = window.location.hostname === "spoeltijd.config";
+      var yearEndpoint = isConfigHost ? "/year" : "/spoeltijd/year";
+      var saveEndpoint = isConfigHost ? "/save" : "/spoeltijd/config/save";
+
+      var form = document.getElementById("configForm");
+      var yearInput = document.getElementById("year");
+      var monthInput = document.getElementById("month");
+      var dayInput = document.getElementById("day");
+      var stateLine = document.getElementById("stateLine");
+
+      form.action = saveEndpoint;
+
+      fetch(yearEndpoint, { cache: "no-store" })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          if (typeof data.year !== "undefined" && data.year !== null) {
+            yearInput.value = data.year;
+          }
+          monthInput.value = data.month == null ? "" : data.month;
+          dayInput.value = data.day == null ? "" : data.day;
+          if (data.timestamp) {
+            stateLine.textContent = "Current timestamp: " + data.timestamp;
+          }
+        })
+        .catch(function () {
+          stateLine.textContent = "Could not load current config state.";
+        });
+    })();
+  </script>
+</body>
+</html>

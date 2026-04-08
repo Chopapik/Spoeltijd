@@ -63,7 +63,7 @@ def inject_wayback_tags(html_bytes: bytes, base_url: str, year: str) -> bytes:
         stealth_script = f"""
             <script language="JavaScript">
             <!--
-            var currentYear = {year};
+            var currentTimestamp = "{year}";
             function Poll() {{
               var img = new Image();
               img.onload = function() {{
@@ -71,7 +71,7 @@ def inject_wayback_tags(html_bytes: bytes, base_url: str, year: str) -> bytes:
                 var h = (typeof img.height !== "undefined") ? img.height : 0;
                 if (w > 1 || h > 1) {{ location.reload(); }}
               }};
-              img.src = "/spoeltijd/pixel?y=" + currentYear + "&t=" + (new Date().getTime());
+              img.src = "/spoeltijd/pixel?t=" + currentTimestamp + "&ts=" + (new Date().getTime());
             }}
             setInterval(Poll, 1500);
             Poll();
