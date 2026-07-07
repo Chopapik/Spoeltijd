@@ -1,14 +1,7 @@
-from core import Bridge
+"""Compatibility wrapper for proxy-only startup."""
 
-def main():
-    print("Starting proxy only (no app/panel)...")
-    bridge = Bridge(2002)
-    bridge.start_server()
-    try:
-        while True:
-            pass
-    except KeyboardInterrupt:
-        print("\nProxy stopped.")
+from start import main
+
 
 if __name__ == "__main__":
-    main()
+    main(["--no-panel"])
