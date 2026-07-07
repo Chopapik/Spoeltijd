@@ -6,6 +6,7 @@ import logging
 import os
 from typing import Optional
 
+from archive.asset_url import is_asset_url
 from archive.html_injector import inject_wayback_tags
 from archive.wayback_client import WaybackFetchError
 from core.constants import GIF_1X1, GIF_2X2
@@ -152,11 +153,19 @@ class Router:
     def _handle_wayback_proxy(
         self, request: HttpRequest, writer: ResponseWriter
     ) -> None:
+        is_asset = is_asset_url(request.full_url)
         try:
-            response = self.bridge.wayback_client.fetch(
-                request.full_url,
-                self.bridge.current_timestamp,
-            )
+            if is_asset:
+                response = self.bridge.asset_client.fetch(
+                    request.full_url,
+                    self.bridge.current_timestamp,
+                )
+            else:
+                logger.info("HTML Wayback FETCH %s", request.full_url)
+                response = self.bridge.wayback_client.fetch(
+                    request.full_url,
+                    self.bridge.current_timestamp,
+                )
         except WaybackFetchError:
             writer.send_error(502, "Could not fetch the archived page.")
             return

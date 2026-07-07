@@ -1,9 +1,11 @@
-"""HTML rewriting: asset URLs to Wayback and injection of stealth script + footer."""
+"""HTML rewriting: clean asset URLs and injection of stealth script + footer."""
 
 import datetime
 import logging
 import re
 from urllib.parse import urljoin
+
+from .asset_url import clean_http_asset_url, is_asset_url
 
 
 logger = logging.getLogger(__name__)
@@ -11,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 def inject_wayback_tags(html_bytes: bytes, base_url: str, year: str) -> bytes:
     """
-    Rewrite src/href in HTML so assets load via Wayback (im_/js_/cs_ prefixes).
+    Rewrite src/href in HTML so assets load as clean HTTP requests.
     Add year-check script (reload on change) and footer.
     """
     try:
@@ -28,25 +30,16 @@ def inject_wayback_tags(html_bytes: bytes, base_url: str, year: str) -> bytes:
                 not url
                 or url.startswith("#")
                 or url.lower().startswith("javascript:")
-                or "web.archive.org" in url
             ):
-                return match.group(0)
-
-            clean_ext = url.split("?")[0].split(".")[-1].lower()
-            if clean_ext in ["jpg", "jpeg", "gif", "png", "bmp", "ico", "tif", "tiff"]:
-                mod = "im_"
-            elif clean_ext in ["js"]:
-                mod = "js_"
-            elif clean_ext in ["css"]:
-                mod = "cs_"
-            else:
                 return match.group(0)
 
             absolute_url = urljoin(base_url, url)
             if not absolute_url.startswith("http"):
                 return match.group(0)
+            if not is_asset_url(absolute_url):
+                return match.group(0)
 
-            new_url = f"/web/{year}{mod}/{absolute_url}"
+            new_url = clean_http_asset_url(absolute_url)
             return f"{attr_name}={quote}{new_url}{quote}"
 
         patched_html = re.sub(pattern, replacer, html_str, flags=re.IGNORECASE)
