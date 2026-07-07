@@ -1,44 +1,82 @@
-"""Spoeltijd bridge: HTTP session and proxy server startup."""
+"""Spoeltijd bridge: HTTP session, shared state, and proxy server startup."""
 
+import logging
 import threading
+from typing import Optional
+
 import requests
 from requests.adapters import HTTPAdapter
 
+from archive.wayback_client import WaybackClient
+from cache import CacheStore, NoOpCacheStore
+
 from .constants import PORT
+from .app_state import AppState
 from network.proxy_handler import ProxyHandler, ThreadingTCPServer
 
 
-class Bridge:
-    """Bridge state (current year) and HTTP session to Wayback; starts the proxy server."""
+logger = logging.getLogger(__name__)
 
-    def __init__(self, year: int, month: int = None, day: int = None):
-        self.current_year = year
-        self.current_month = month
-        self.current_day = day
+
+class Bridge:
+    """Bridge state and HTTP session to Wayback; starts the proxy server."""
+
+    def __init__(
+        self,
+        year: int = 2002,
+        month: Optional[int] = None,
+        day: Optional[int] = None,
+        state: Optional[AppState] = None,
+        cache_store: Optional[CacheStore] = None,
+    ):
+        self.state = state or AppState(year, month, day)
+        self.cache_store = cache_store or NoOpCacheStore()
         self.session = requests.Session()
         adapter = HTTPAdapter(pool_connections=200, pool_maxsize=200)
         self.session.mount("https://", adapter)
         self.session.mount("http://", adapter)
+        self.wayback_client = WaybackClient(self.session, self.cache_store)
+
+    @property
+    def current_year(self) -> int:
+        return self.state.snapshot()[0]
+
+    @current_year.setter
+    def current_year(self, value: int) -> None:
+        self.state.update(year=value)
+
+    @property
+    def current_month(self) -> Optional[int]:
+        return self.state.snapshot()[1]
+
+    @current_month.setter
+    def current_month(self, value: Optional[int]) -> None:
+        self.state.update(month=value)
+
+    @property
+    def current_day(self) -> Optional[int]:
+        return self.state.snapshot()[2]
+
+    @current_day.setter
+    def current_day(self, value: Optional[int]) -> None:
+        self.state.update(day=value)
 
     @property
     def current_timestamp(self) -> str:
-        if not self.current_month:
-            return f"{self.current_year}"
-        if not self.current_day:
-            return f"{self.current_year}{int(self.current_month):02d}"
-        return f"{self.current_year}{int(self.current_month):02d}{int(self.current_day):02d}"
+        return self.state.timestamp
 
-    def start_server(self, port: int = PORT):
-        print(f"--- Spoeltijd Bridge running on port {port} ---")
-        print("--- Waiting for connections... ---")
+    def serve_forever(self, port: int = PORT) -> None:
+        logger.info("Spoeltijd Bridge running on port %s", port)
+        logger.info("Waiting for connections...")
 
-        def run_server():
-            with ThreadingTCPServer(("0.0.0.0", port), ProxyHandler) as server:
-                server.bridge = self
-                try:
-                    server.serve_forever()
-                except KeyboardInterrupt:
-                    print("\nShutting down Spoeltijd Bridge...")
+        with ThreadingTCPServer(("0.0.0.0", port), ProxyHandler) as server:
+            server.bridge = self
+            try:
+                server.serve_forever()
+            except KeyboardInterrupt:
+                logger.info("Shutting down Spoeltijd Bridge...")
 
-        thread = threading.Thread(target=run_server, daemon=True)
+    def start_server(self, port: int = PORT) -> threading.Thread:
+        thread = threading.Thread(target=self.serve_forever, args=(port,), daemon=True)
         thread.start()
+        return thread

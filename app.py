@@ -1,8 +1,12 @@
 import datetime
+import logging
 import time
 
-from core import Bridge
+from core import AppState, Bridge
 from panel import Panel
+
+
+logger = logging.getLogger(__name__)
 
 
 class App:
@@ -12,10 +16,11 @@ class App:
 
         # Keep initial year behavior unchanged from the previous entrypoint.
         self.current_year = current_year
+        self.state = AppState(current_year)
         self.last_year_state = None
 
         self.panel = Panel(self.year_min, self.year_max, self.current_year)
-        self.bridge = Bridge(self.current_year)
+        self.bridge = Bridge(state=self.state)
 
     def _process_tick(self):
         steps = int(self.panel.encoder.steps)
@@ -35,7 +40,7 @@ class App:
             self._on_year_changed(new_year)
 
     def _on_year_changed(self, new_year):
-        print(f"Time Warp: {new_year}")
+        logger.info("Time Warp: %s", new_year)
 
         self.panel.update_lcd(f"{new_year}")
         self.panel.update_oled(f"Target year:\n{new_year}")
@@ -51,5 +56,5 @@ class App:
                 self._process_tick()
                 time.sleep(0.1)
         except KeyboardInterrupt:
-            print("\nShutting down...")
+            logger.info("Shutting down...")
             self.panel.update_lcd("SYSTEM HALTED")
