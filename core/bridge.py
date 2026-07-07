@@ -6,6 +6,7 @@ from typing import Optional
 
 import requests
 from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 from archive.wayback_client import WaybackClient
 from cache import CacheStore, NoOpCacheStore
@@ -32,7 +33,30 @@ class Bridge:
         self.state = state or AppState(year, month, day)
         self.cache_store = cache_store or NoOpCacheStore()
         self.session = requests.Session()
-        adapter = HTTPAdapter(pool_connections=200, pool_maxsize=200)
+        self.session.headers.update({
+            "User-Agent": (
+                "Spoeltijd/0.1 "
+                "(+https://github.com/Chopapik/Spoeltijd; retro Wayback bridge)"
+            ),
+            "Accept-Encoding": "gzip, deflate",
+        })
+
+        retry = Retry(
+            total=1,
+            connect=1,
+            read=1,
+            status=0,
+            backoff_factor=1,
+            allowed_methods=frozenset(["GET"]),
+            respect_retry_after_header=True,
+        )
+
+        adapter = HTTPAdapter(
+            pool_connections=2,
+            pool_maxsize=2,
+            pool_block=True,
+            max_retries=retry,
+        )
         self.session.mount("https://", adapter)
         self.session.mount("http://", adapter)
         self.wayback_client = WaybackClient(self.session, self.cache_store)
