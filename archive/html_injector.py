@@ -1,8 +1,12 @@
 """HTML rewriting: asset URLs to Wayback and injection of stealth script + footer."""
 
-import re
 import datetime
+import logging
+import re
 from urllib.parse import urljoin
+
+
+logger = logging.getLogger(__name__)
 
 
 def inject_wayback_tags(html_bytes: bytes, base_url: str, year: str) -> bytes:
@@ -101,6 +105,6 @@ def inject_wayback_tags(html_bytes: bytes, base_url: str, year: str) -> bytes:
 
         return patched_html.encode("utf-8")
 
-    except Exception as e:
-        print(f"[!] Regex rewrite error: {e}")
+    except Exception:
+        logger.exception("HTML injection failed")
         return html_bytes
